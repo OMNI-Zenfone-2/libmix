@@ -259,7 +259,6 @@ const VideoFormatInfo* VideoDecoderBase::getFormatInfo(void) {
 }
 
 const VideoRenderBuffer* VideoDecoderBase::getOutput(bool draining, VideoErrorBuffer *outErrBuf) {
-    VAStatus vaStatus;
     if (mVAStarted == false) {
         return NULL;
     }
@@ -282,7 +281,7 @@ const VideoRenderBuffer* VideoDecoderBase::getOutput(bool draining, VideoErrorBu
         if (mOutputHead == NULL) {
             mOutputTail = NULL;
         }
-        vaStatus = vaSetTimestampForSurface(mVADisplay, outputByPos->renderBuffer.surface, outputByPos->renderBuffer.timeStamp);
+        vaSetTimestampForSurface(mVADisplay, outputByPos->renderBuffer.surface, outputByPos->renderBuffer.timeStamp);
         if (useGraphicBuffer && !mUseGEN) {
             vaSyncSurface(mVADisplay, outputByPos->renderBuffer.surface);
             fillDecodingErrors(&(outputByPos->renderBuffer));
@@ -337,7 +336,7 @@ const VideoRenderBuffer* VideoDecoderBase::getOutput(bool draining, VideoErrorBu
         }
     }
     //VTRACE("Output POC %d for display (pts = %.2f)", output->pictureOrder, output->renderBuffer.timeStamp/1E6);
-    vaStatus = vaSetTimestampForSurface(mVADisplay, output->renderBuffer.surface, output->renderBuffer.timeStamp);
+    vaSetTimestampForSurface(mVADisplay, output->renderBuffer.surface, output->renderBuffer.timeStamp);
 
     if (useGraphicBuffer && !mUseGEN) {
         vaSyncSurface(mVADisplay, output->renderBuffer.surface);
@@ -767,7 +766,6 @@ exit:
 Decode_Status VideoDecoderBase::setupVA(uint32_t numSurface, VAProfile profile, uint32_t numExtraSurface) {
     VAStatus vaStatus = VA_STATUS_SUCCESS;
     Decode_Status status;
-    VAConfigAttrib attrib;
 
     if (mVAStarted) {
         return DECODE_SUCCESS;
@@ -846,6 +844,7 @@ Decode_Status VideoDecoderBase::setupVA(uint32_t numSurface, VAProfile profile, 
         status = getCodecSpecificConfigs(profile, &mVAConfig);
         CHECK_STATUS("getCodecSpecificAttributes");
 #else
+        VAConfigAttrib attrib;
         //We are requesting RT attributes
         attrib.type = VAConfigAttribRTFormat;
         attrib.value = VA_RT_FORMAT_YUV420;
@@ -1147,7 +1146,6 @@ Decode_Status VideoDecoderBase::getRawDataFromSurface(VideoRenderBuffer *renderB
     }
 
     VAStatus vaStatus;
-    VAImageFormat imageFormat;
     VAImage vaImage;
     vaStatus = vaSyncSurface(renderBuffer->display, renderBuffer->surface);
     CHECK_VA_STATUS("vaSyncSurface");
