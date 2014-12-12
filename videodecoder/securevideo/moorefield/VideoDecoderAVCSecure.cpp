@@ -233,7 +233,6 @@ Decode_Status VideoDecoderAVCSecure::processClassicInputBuffer(VideoDecodeBuffer
     uint8_t naluType = 0;
 
     int32_t num_nalus;
-    int32_t nalu_offset;
     int32_t offset;
     uint8_t *data_src;
     uint8_t *nalu_data;

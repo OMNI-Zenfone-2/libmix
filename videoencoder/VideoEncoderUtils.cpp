@@ -427,7 +427,6 @@ Encode_Status VASurfaceMap::MappingToVASurface() {
 Encode_Status VASurfaceMap::MappingSurfaceID(intptr_t value) {
 
     VAStatus vaStatus = VA_STATUS_SUCCESS;
-    VASurfaceID surface;
 
     //try to get kbufhandle from SurfaceID
     uint32_t fourCC = 0;
@@ -627,7 +626,6 @@ Encode_Status VASurfaceMap::doActionCopy() {
     }
 
     uint8_t *srcY, *dstY;
-    uint8_t *srcU, *srcV;
     uint8_t *srcUV, *dstUV;
 
     srcY = pSrcBuffer + srcY_offset;
