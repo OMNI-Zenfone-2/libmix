@@ -21,6 +21,12 @@ LOCAL_SRC_FILES := \
     VideoEncoderUtils.cpp \
     VideoEncoderHost.cpp
 
+# VideoEncoderAVC.cpp has extraneous parentheses and
+# uses va_enc_h264.h with empty union.
+LOCAL_CLANG_CFLAGS += \
+    -Wno-parentheses-equality \
+    -Wno-extern-c-compat
+
 ifeq ($(ENABLE_IMG_GRAPHICS),)
     LOCAL_SRC_FILES += PVSoftMPEG4Encoder.cpp
 endif
