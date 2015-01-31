@@ -22,6 +22,8 @@
 #include "VideoDecoderAVCSecure.h"
 #include "VideoFrameInfo.h"
 
+#include <string.h>
+
 #define MAX_SLICEHEADER_BUFFER_SIZE 4096
 #define STARTCODE_PREFIX_LEN        3
 #define NALU_TYPE_MASK              0x1F
