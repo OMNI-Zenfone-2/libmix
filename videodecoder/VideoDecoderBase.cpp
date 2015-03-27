@@ -294,9 +294,6 @@ const VideoRenderBuffer* VideoDecoderBase::getOutput(bool draining, VideoErrorBu
         return &(outputByPos->renderBuffer);
     }
 
-    // output by presentation time stamp (the smallest pts)
-    VideoSurfaceBuffer *outputByPts = findOutputByPts();
-
     VideoSurfaceBuffer *output = NULL;
     if (mOutputMethod == OUTPUT_BY_POC) {
         output = findOutputByPoc(draining);
@@ -309,13 +306,6 @@ const VideoRenderBuffer* VideoDecoderBase::getOutput(bool draining, VideoErrorBu
 
     if (output == NULL) {
         return NULL;
-    }
-
-    if (output != outputByPts) {
-        // swap time stamp
-        uint64_t ts = output->renderBuffer.timeStamp;
-        output->renderBuffer.timeStamp = outputByPts->renderBuffer.timeStamp;
-        outputByPts->renderBuffer.timeStamp = ts;
     }
 
     if (output != outputByPos) {
