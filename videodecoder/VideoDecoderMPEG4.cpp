@@ -98,17 +98,33 @@ Decode_Status VideoDecoderMPEG4::decode(VideoDecodeBuffer *buffer) {
         data->codec_data.video_object_layer_width &&
         data->codec_data.video_object_layer_height) {
         // update  encoded image size
-        ITRACE("Video size is changed. from %dx%d to %dx%d\n",mVideoFormatInfo.width,mVideoFormatInfo.height,
-                data->codec_data.video_object_layer_width,data->codec_data.video_object_layer_height);
-        bool noNeedFlush = false;
+        ITRACE("Video size is changed. from %dx%d to %dx%d\n", mVideoFormatInfo.width, mVideoFormatInfo.height,
+        data->codec_data.video_object_layer_width,data->codec_data.video_object_layer_height);
+
+        if (useGraphicbuffer && mStoreMetaData) {
+            pthread_mutex_lock(&mFormatLock);
+        }
         mVideoFormatInfo.width = data->codec_data.video_object_layer_width;
         mVideoFormatInfo.height = data->codec_data.video_object_layer_height;
+        bool needFlush = false;
         if (useGraphicbuffer) {
-            noNeedFlush = (mVideoFormatInfo.width <= mVideoFormatInfo.surfaceWidth)
-                    && (mVideoFormatInfo.height <= mVideoFormatInfo.surfaceHeight);
+            if (mStoreMetaData) {
+                needFlush = true;
+
+                mVideoFormatInfo.valid = false;
+                pthread_mutex_unlock(&mFormatLock);
+            } else {
+                needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
+                         || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight);
+            }
         }
-        if (!noNeedFlush) {
-            flushSurfaceBuffers();
+        if (needFlush) {
+            if (mStoreMetaData) {
+                status = endDecodingFrame(false);
+                CHECK_STATUS("endDecodingFrame");
+            } else {
+                flushSurfaceBuffers();
+            }
             mSizeChanged = false;
             return DECODE_FORMAT_CHANGE;
         } else {
@@ -116,6 +132,10 @@ Decode_Status VideoDecoderMPEG4::decode(VideoDecodeBuffer *buffer) {
         }
 
         setRenderRect();
+    } else {
+        if (useGraphicbuffer && mStoreMetaData) {
+            mVideoFormatInfo.valid = true;
+        }
     }
 
     status = decodeFrame(buffer, data);

@@ -103,15 +103,31 @@ Decode_Status VideoDecoderMPEG2::decode(VideoDecodeBuffer *buffer) {
         (data->codec_data->frame_width > 0) && (data->codec_data->frame_height)) {
         // update  encoded image size
         ITRACE("Video size is changed. from %dx%d to %dx%d\n",mVideoFormatInfo.width,mVideoFormatInfo.height, data->codec_data->frame_width,data->codec_data->frame_height);
-        bool needFlush = false;
+        if (useGraphicbuffer && mStoreMetaData) {
+            pthread_mutex_lock(&mFormatLock);
+        }
         mVideoFormatInfo.width = data->codec_data->frame_width;
         mVideoFormatInfo.height = data->codec_data->frame_height;
+        bool needFlush = false;
         if (useGraphicbuffer) {
-            needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
-                    || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight);
+            if (mStoreMetaData) {
+                needFlush = true;
+
+                mVideoFormatInfo.valid = false;
+                pthread_mutex_unlock(&mFormatLock);
+            } else {
+                needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
+                         || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight);
+            }
         }
+
         if (needFlush) {
-            flushSurfaceBuffers();
+            if (mStoreMetaData) {
+                status = endDecodingFrame(false);
+                CHECK_STATUS("endDecodingFrame");
+            } else {
+                flushSurfaceBuffers();
+            }
             mSizeChanged = false;
             return DECODE_FORMAT_CHANGE;
         } else {
@@ -119,6 +135,10 @@ Decode_Status VideoDecoderMPEG2::decode(VideoDecodeBuffer *buffer) {
         }
 
         setRenderRect();
+    } else {
+        if (useGraphicbuffer && mStoreMetaData) {
+            mVideoFormatInfo.valid = true;
+        }
     }
 
     VideoDecoderBase::setRotationDegrees(buffer->rotationDegrees);

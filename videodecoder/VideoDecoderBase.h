@@ -54,10 +54,11 @@ public:
     virtual void flush(void);
     virtual void freeSurfaceBuffers(void);
     virtual const VideoRenderBuffer* getOutput(bool draining = false, VideoErrorBuffer *output_buf = NULL);
-    virtual Decode_Status signalRenderDone(void * graphichandler);
+    virtual Decode_Status signalRenderDone(void * graphichandler, bool isNew = false);
     virtual const VideoFormatInfo* getFormatInfo(void);
     virtual bool checkBufferAvail();
     virtual void enableErrorReport(bool enabled = false) {mErrReportEnabled = enabled; };
+    virtual int getOutputQueueLength(void);
 
 protected:
     // each acquireSurfaceBuffer must be followed by a corresponding outputSurfaceBuffer or releaseSurfaceBuffer.
@@ -90,6 +91,7 @@ protected:
     virtual Decode_Status getCodecSpecificConfigs(VAProfile profile, VAConfigID *config);
 #endif
     virtual Decode_Status checkHardwareCapability();
+    Decode_Status createSurfaceFromHandle(int32_t index);
 private:
     Decode_Status mapSurface(void);
     void initSurfaceBuffer(bool reset);
@@ -101,6 +103,7 @@ private:
 
 protected:
     bool mLowDelay; // when true, decoded frame is immediately output for rendering
+    bool mStoreMetaData; // when true, meta data mode is enabled for adaptive playback
     VideoFormatInfo mVideoFormatInfo;
     Display *mDisplay;
     VADisplay mVADisplay;
@@ -122,6 +125,7 @@ protected:
 
     int32_t mOutputWindowSize; // indicate limit of number of outstanding frames for output
     int32_t mRotationDegrees;
+    pthread_mutex_t mFormatLock;
 
     bool mErrReportEnabled;
     bool mWiDiOn;
@@ -173,6 +177,7 @@ private:
     void *mSignalBufferPre[MAX_GRAPHIC_BUFFER_NUM];
     uint32 mSignalBufferSize;
     bool mUseGEN;
+    uint32_t mMetaDataBuffersNum;
 protected:
     void ManageReference(bool enable) {mManageReference = enable;}
     void setOutputMethod(OUTPUT_METHOD method) {mOutputMethod = method;}

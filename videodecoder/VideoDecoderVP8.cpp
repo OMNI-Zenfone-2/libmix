@@ -50,6 +50,10 @@ void VideoDecoderVP8::updateFormatInfo(vbp_data_vp8 *data) {
     ITRACE("updateFormatInfo: current size: %d x %d, new size: %d x %d",
             mVideoFormatInfo.width, mVideoFormatInfo.height, width, height);
 
+    if ((mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER) && mStoreMetaData) {
+        pthread_mutex_lock(&mFormatLock);
+    }
+
     if ((mVideoFormatInfo.width != width ||
             mVideoFormatInfo.height != height) &&
             width && height) {
@@ -68,7 +72,17 @@ void VideoDecoderVP8::updateFormatInfo(vbp_data_vp8 *data) {
     mVideoFormatInfo.cropBottom = data->codec_data->crop_bottom;
     ITRACE("Cropping: left = %d, top = %d, right = %d, bottom = %d", data->codec_data->crop_left, data->codec_data->crop_top, data->codec_data->crop_right, data->codec_data->crop_bottom);
 
-    mVideoFormatInfo.valid = true;
+    if ((mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER) && mStoreMetaData) {
+        if (mSizeChanged) {
+            mVideoFormatInfo.valid = false;
+        } else {
+            mVideoFormatInfo.valid = true;
+        }
+
+        pthread_mutex_unlock(&mFormatLock);
+    } else {
+        mVideoFormatInfo.valid = true;
+    }
 
     setRenderRect();
 }
@@ -161,21 +175,27 @@ Decode_Status VideoDecoderVP8::decodeFrame(VideoDecodeBuffer* buffer, vbp_data_v
     }
 
     if (VP8_KEY_FRAME == data->codec_data->frame_type) {
-        if (mSizeChanged && !useGraphicbuffer){
+        updateFormatInfo(data);
+        if (mSizeChanged && !(mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER)) {
             mSizeChanged = false;
             return DECODE_FORMAT_CHANGE;
-        } else {
-            updateFormatInfo(data);
-            bool noNeedFlush = false;
-            if (useGraphicbuffer) {
-                noNeedFlush = (mVideoFormatInfo.width <= mVideoFormatInfo.surfaceWidth)
-                        && (mVideoFormatInfo.height <= mVideoFormatInfo.surfaceHeight);
-            }
-            if (mSizeChanged == true && !noNeedFlush) {
+        }
+
+        bool needFlush = false;
+        if (useGraphicbuffer) {
+            // For VP8 in adaptive playback legacy mode,
+            // force buffer reallocation.
+            needFlush = mSizeChanged;
+        }
+        if (needFlush) {
+            if (mStoreMetaData) {
+                status = endDecodingFrame(false);
+                CHECK_STATUS("endDecodingFrame");
+            } else {
                 flushSurfaceBuffers();
-                mSizeChanged = false;
-                return DECODE_FORMAT_CHANGE;
             }
+            mSizeChanged = false;
+            return DECODE_FORMAT_CHANGE;
         }
     }
 

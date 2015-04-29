@@ -718,6 +718,10 @@ void VideoDecoderAVC::updateFormatInfo(vbp_data_h264 *data) {
     ITRACE("updateFormatInfo: current size: %d x %d, new size: %d x %d",
         mVideoFormatInfo.width, mVideoFormatInfo.height, width, height);
 
+    if ((mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER) && mStoreMetaData) {
+        pthread_mutex_lock(&mFormatLock);
+    }
+
     if ((mVideoFormatInfo.width != width ||
         mVideoFormatInfo.height != height) &&
         width && height) {
@@ -781,7 +785,19 @@ void VideoDecoderAVC::updateFormatInfo(vbp_data_h264 *data) {
 
     ITRACE("actualBufferNeeded =%d", mVideoFormatInfo.actualBufferNeeded);
 
-    mVideoFormatInfo.valid = true;
+    if ((mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER) && mStoreMetaData) {
+        if (mSizeChanged
+            || isWiDiStatusChanged()
+            || (mVideoFormatInfo.actualBufferNeeded > mConfigBuffer.surfaceNumber)) {
+            mVideoFormatInfo.valid = false;
+        } else {
+            mVideoFormatInfo.valid = true;
+        }
+
+        pthread_mutex_unlock(&mFormatLock);
+    } else {
+        mVideoFormatInfo.valid = true;
+    }
 
     setRenderRect();
 }
@@ -813,20 +829,38 @@ bool VideoDecoderAVC::isWiDiStatusChanged() {
 }
 
 Decode_Status VideoDecoderAVC::handleNewSequence(vbp_data_h264 *data) {
+    Decode_Status status;
     updateFormatInfo(data);
-    bool needFlush = false;
-    bool rawDataMode = !(mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER);
 
-    if (!rawDataMode) {
-        needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
-                || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight)
-                || isWiDiStatusChanged()
-                || (mVideoFormatInfo.actualBufferNeeded > mConfigBuffer.surfaceNumber);
+    bool rawDataMode = !(mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER);
+    if (rawDataMode && mSizeChanged) {
+        flushSurfaceBuffers();
+        mSizeChanged = false;
+        return DECODE_FORMAT_CHANGE;
     }
 
-    if (needFlush || (rawDataMode && mSizeChanged)) {
+    bool needFlush = false;
+    if (!rawDataMode) {
+        if (mStoreMetaData) {
+            needFlush = mSizeChanged
+                    || isWiDiStatusChanged()
+                    || (mVideoFormatInfo.actualBufferNeeded > mConfigBuffer.surfaceNumber);
+        } else {
+            needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
+                    || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight)
+                    || isWiDiStatusChanged()
+                    || (mVideoFormatInfo.actualBufferNeeded > mConfigBuffer.surfaceNumber);
+        }
+    }
+
+    if (needFlush) {
+        if (mStoreMetaData) {
+            status = endDecodingFrame(false);
+            CHECK_STATUS("endDecodingFrame");
+        } else {
+            flushSurfaceBuffers();
+        }
         mSizeChanged = false;
-        flushSurfaceBuffers();
         return DECODE_FORMAT_CHANGE;
     } else
         return DECODE_SUCCESS;

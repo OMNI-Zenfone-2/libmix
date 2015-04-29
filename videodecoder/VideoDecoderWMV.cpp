@@ -104,23 +104,42 @@ Decode_Status VideoDecoderWMV::decode(VideoDecodeBuffer *buffer) {
         data->se_data->CODED_WIDTH &&
         data->se_data->CODED_HEIGHT) {
         ITRACE("video size is changed from %dx%d to %dx%d", mVideoFormatInfo.width, mVideoFormatInfo.height,
-                data->se_data->CODED_WIDTH, data->se_data->CODED_HEIGHT);
+        data->se_data->CODED_WIDTH, data->se_data->CODED_HEIGHT);
+        if (useGraphicbuffer && mStoreMetaData) {
+            pthread_mutex_lock(&mFormatLock);
+        }
         mVideoFormatInfo.width = data->se_data->CODED_WIDTH;
         mVideoFormatInfo.height = data->se_data->CODED_HEIGHT;
-        bool noNeedFlush = false;
+        bool needFlush = false;
         if (useGraphicbuffer) {
-            noNeedFlush = (mVideoFormatInfo.width <= mVideoFormatInfo.surfaceWidth)
-                    && (mVideoFormatInfo.height <= mVideoFormatInfo.surfaceHeight);
+            if (mStoreMetaData) {
+                needFlush = true;
+
+                mVideoFormatInfo.valid = false;
+                pthread_mutex_unlock(&mFormatLock);
+            } else {
+                needFlush = (mVideoFormatInfo.width > mVideoFormatInfo.surfaceWidth)
+                         || (mVideoFormatInfo.height > mVideoFormatInfo.surfaceHeight);
+            }
         }
 
         setRenderRect();
 
-        if (noNeedFlush) {
-            mSizeChanged = true;
-        } else {
-            flushSurfaceBuffers();
+        if (needFlush) {
+            if (mStoreMetaData) {
+                status = endDecodingFrame(false);
+                CHECK_STATUS("endDecodingFrame");
+            } else {
+                flushSurfaceBuffers();
+            }
             mSizeChanged = false;
             return DECODE_FORMAT_CHANGE;
+        } else {
+            mSizeChanged = true;
+        }
+    } else {
+        if (useGraphicbuffer && mStoreMetaData) {
+            mVideoFormatInfo.valid = true;
         }
     }
 
