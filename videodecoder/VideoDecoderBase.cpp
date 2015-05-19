@@ -885,6 +885,7 @@ Decode_Status VideoDecoderBase::setupVA(uint32_t numSurface, VAProfile profile, 
     }
 
     setRenderRect();
+    setColorSpaceInfo(mVideoFormatInfo.colorMatrix, mVideoFormatInfo.videoRange);
 
     int32_t format = VA_RT_FORMAT_YUV420;
     if (mConfigBuffer.flag & WANT_SURFACE_PROTECTION) {
@@ -1647,10 +1648,46 @@ void VideoDecoderBase::setRenderRect() {
 
     VADisplayAttribute render_rect;
     render_rect.type = VADisplayAttribRenderRect;
-    render_rect.value = (long)&rect;
+    render_rect.attrib_ptr = &rect;
 
     ret = vaSetDisplayAttributes(mVADisplay, &render_rect, 1);
     if (ret) {
         ETRACE("Failed to set rotation degree.");
+    }
+}
+
+void VideoDecoderBase::setColorSpaceInfo(int32_t colorMatrix, int32_t videoRange) {
+    ITRACE("set colorMatrix: 0x%x ", colorMatrix);
+    VADisplayAttribute cm;
+    cm.type = VADisplayAttribCSCMatrix;
+    if (colorMatrix == VA_SRC_BT601) {
+        cm.attrib_ptr = &s601;
+    } else if (colorMatrix == VA_SRC_BT709) {
+        cm.attrib_ptr = &s709;
+    } else {
+      // if we can't get the color matrix or it's not BT601 or BT709
+      // we decide the color matrix according to clip resolution
+      if (mVideoFormatInfo.width < 1280 && mVideoFormatInfo.height < 720)
+          cm.attrib_ptr = &s601;
+      else
+          cm.attrib_ptr = &s709;
+    }
+
+    VAStatus ret = vaSetDisplayAttributes(mVADisplay, &cm, 1);
+
+    if (ret) {
+        ETRACE("Failed to set colorMatrix.");
+    }
+
+    // 1: full range, 0: reduced range
+    ITRACE("set videoRange: %d ", videoRange);
+    VADisplayAttribute vr;
+    vr.type = VADisplayAttribColorRange;
+    vr.value = (videoRange == 1) ? VA_SOURCE_RANGE_FULL : VA_SOURCE_RANGE_REDUCED;
+
+    ret = vaSetDisplayAttributes(mVADisplay, &vr, 1);
+
+    if (ret) {
+        ETRACE("Failed to set videoRange.");
     }
 }

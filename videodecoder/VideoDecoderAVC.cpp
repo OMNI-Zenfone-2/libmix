@@ -699,15 +699,6 @@ Decode_Status VideoDecoderAVC::startVA(vbp_data_h264 *data) {
         DPBSize = 19 - AVC_EXTRA_SURFACE_NUMBER;
     }
 
-    if (mConfigBuffer.flag & WANT_ADAPTIVE_PLAYBACK) {
-        // When Adaptive playback is enabled, turn off low delay mode.
-        // Otherwise there may be a 240ms stuttering if the output mode is changed from LowDelay to Delay.
-        enableLowDelayMode(false);
-    } else {
-        // for baseline profile, enable low delay mode automatically
-        enableLowDelayMode(data->codec_data->profile_idc == 66);
-    }
-
     return VideoDecoderBase::setupVA(DPBSize + AVC_EXTRA_SURFACE_NUMBER, vaProfile);
 }
 
@@ -717,6 +708,15 @@ void VideoDecoderAVC::updateFormatInfo(vbp_data_h264 *data) {
     uint32_t height = (data->pic_data[0].pic_parms->picture_height_in_mbs_minus1 + 1) * 16;
     ITRACE("updateFormatInfo: current size: %d x %d, new size: %d x %d",
         mVideoFormatInfo.width, mVideoFormatInfo.height, width, height);
+
+    if (mConfigBuffer.flag & WANT_ADAPTIVE_PLAYBACK) {
+        // When Adaptive playback is enabled, turn off low delay mode.
+        // Otherwise there may be a 240ms stuttering if the output mode is changed from LowDelay to Delay.
+        enableLowDelayMode(false);
+    } else {
+        // for baseline profile or constrained high profile, enable low delay mode automatically
+        enableLowDelayMode((data->codec_data->profile_idc == 66) || (data->codec_data->profile_idc == 100 && data->codec_data->constraint_set4_flag == 1 && data->codec_data->constraint_set5_flag == 1));
+    }
 
     if ((mConfigBuffer.flag & USE_NATIVE_GRAPHIC_BUFFER) && mStoreMetaData) {
         pthread_mutex_lock(&mFormatLock);
@@ -800,6 +800,7 @@ void VideoDecoderAVC::updateFormatInfo(vbp_data_h264 *data) {
     }
 
     setRenderRect();
+    setColorSpaceInfo(mVideoFormatInfo.colorMatrix, mVideoFormatInfo.videoRange);
 }
 
 bool VideoDecoderAVC::isWiDiStatusChanged() {

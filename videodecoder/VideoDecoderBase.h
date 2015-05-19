@@ -42,6 +42,24 @@ typedef unsigned int Display;
 // POC: 4P,  8P,  10P,  6B and mNextOutputPOC = 5
 #define OUTPUT_WINDOW_SIZE 8
 
+/*
+ * ITU-R BT.601, BT.709  transfer matrices from VA 2.0
+ * Video Color Field definitions Design Spec(Version 0.03).
+ * [R', G', B'] values are in the range [0, 1], Y' is in the range [0,1]
+ * and [Pb, Pr] components are in the range [-0.5, 0.5].
+*/
+static float s601[9] = {
+    1, -0.000001, 1.402,
+    1, -0.344136, -0.714136,
+    1, 1.772, 0
+};
+
+static float s709[9] = {
+    1, 0, 1.5748,
+    1, -0.187324, -0.468124,
+    1, 1.8556, 0
+};
+
 class VideoDecoderBase : public IVideoDecoder {
 public:
     VideoDecoderBase(const char *mimeType, _vbp_parser_type type);
@@ -186,6 +204,7 @@ protected:
     void enableLowDelayMode(bool enable) {mLowDelay = enable;}
     void setRotationDegrees(int32_t rotationDegrees);
     void setRenderRect(void);
+    void setColorSpaceInfo(int32_t colorMatrix, int32_t videoRange);
 };
 
 

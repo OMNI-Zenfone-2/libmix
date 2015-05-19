@@ -495,8 +495,8 @@ void VideoDecoderWMV::updateFormatInfo(vbp_data_vc1 *data) {
         ITRACE("Video size is changed.");
     }
 
-    // scaling has been performed on the decoded image.
-    mVideoFormatInfo.videoRange = 1;
+    // video_range has default value of 0. Y ranges from 16 to 235.
+    mVideoFormatInfo.videoRange = 0;
 
     switch (data->se_data->MATRIX_COEF) {
         case 1:
@@ -518,6 +518,7 @@ void VideoDecoderWMV::updateFormatInfo(vbp_data_vc1 *data) {
     mVideoFormatInfo.valid = true;
 
     setRenderRect();
+    setColorSpaceInfo(mVideoFormatInfo.colorMatrix, mVideoFormatInfo.videoRange);
 }
 
 Decode_Status VideoDecoderWMV::allocateVABufferIDs(int32_t number) {

@@ -66,6 +66,19 @@ void VideoDecoderVP8::updateFormatInfo(vbp_data_vp8 *data) {
         mVideoFormatInfo.height = height;
     }
 
+    // video_range has default value of 0. Y ranges from 16 to 235.
+    mVideoFormatInfo.videoRange = 0;
+
+    switch (data->codec_data->clr_type) {
+        case 0:
+            mVideoFormatInfo.colorMatrix = VA_SRC_BT601;
+            break;
+        case 1:
+        default:
+            mVideoFormatInfo.colorMatrix = 0;
+            break;
+    }
+
     mVideoFormatInfo.cropLeft = data->codec_data->crop_left;
     mVideoFormatInfo.cropRight = data->codec_data->crop_right;
     mVideoFormatInfo.cropTop = data->codec_data->crop_top;
@@ -85,6 +98,7 @@ void VideoDecoderVP8::updateFormatInfo(vbp_data_vp8 *data) {
     }
 
     setRenderRect();
+    setColorSpaceInfo(mVideoFormatInfo.colorMatrix, mVideoFormatInfo.videoRange);
 }
 
 Decode_Status VideoDecoderVP8::startVA(vbp_data_vp8 *data) {
