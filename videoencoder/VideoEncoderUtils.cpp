@@ -22,6 +22,7 @@
 #ifdef IMG_GFX
 #include <hal/hal_public.h>
 #include <hardware/gralloc.h>
+#include <sync/sync.h>
 
 //#define GFX_DUMP
 
@@ -161,7 +162,14 @@ static int gfx_Blit(buffer_handle_t src, buffer_handle_t dest,
     IMG_gralloc_module_public_t* GrallocMod = (IMG_gralloc_module_public_t*)gModule;
 
 #ifdef MRFLD_GFX
-    err = GrallocMod->Blit(GrallocMod, src, dest, w, h, 0, 0, 0, 0);
+    {
+        int fenceFd;
+        err = GrallocMod->Blit(GrallocMod, src, dest, w, h, 0, 0, 0, -1, &fenceFd);
+        if (!err) {
+            sync_wait(fenceFd, -1);
+            close(fenceFd);
+        }
+    }
 #else
     err = GrallocMod->Blit2(GrallocMod, src, dest, w, h, 0, 0);
 #endif

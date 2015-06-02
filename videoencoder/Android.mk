@@ -53,7 +53,8 @@ LOCAL_SHARED_LIBRARIES := \
     libva-android \
     libva-tpi \
     libhardware \
-    libintelmetadatabuffer
+    libintelmetadatabuffer \
+    libsync
 
 LOCAL_COPY_HEADERS_TO  := libmix_videoencoder
 
