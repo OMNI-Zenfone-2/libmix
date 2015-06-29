@@ -393,6 +393,8 @@ Decode_Status VideoDecoderAVCSecure::decodeFrame(VideoDecodeBuffer *buffer, vbp_
 
     if (mModularMode) {
         status = parseModularSliceHeader(data);
+        if (status != DECODE_SUCCESS)
+            status = parseModularSliceHeader(data);
     }
     else {
         status = parseClassicSliceHeader(data);
