@@ -880,6 +880,9 @@ Decode_Status VideoDecoderBase::setupVA(uint32_t numSurface, VAProfile profile, 
     mNumExtraSurfaces = numExtraSurface;
     mSurfaces = new VASurfaceID [mNumSurfaces + mNumExtraSurfaces];
     mExtraSurfaces = mSurfaces + mNumSurfaces;
+    for (int i = 0; i < mNumSurfaces + mNumExtraSurfaces; ++i) {
+        mSurfaces[i] = VA_INVALID_SURFACE;
+    }
     if (mSurfaces == NULL) {
         return DECODE_MEMORY_FAIL;
     }
@@ -1086,9 +1089,8 @@ Decode_Status VideoDecoderBase::terminateVA(void) {
         mSurfaceUserPtr = NULL;
     }
 
-    if (mSurfaces)
-    {
-        vaDestroySurfaces(mVADisplay, mSurfaces, mNumSurfaces + mNumExtraSurfaces);
+    if (mSurfaces) {
+        vaDestroySurfaces(mVADisplay, mSurfaces, mStoreMetaData ? mMetaDataBuffersNum : (mNumSurfaces + mNumExtraSurfaces));
         delete [] mSurfaces;
         mSurfaces = NULL;
     }
