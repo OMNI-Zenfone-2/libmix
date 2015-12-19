@@ -162,6 +162,9 @@ static int gfx_Blit(buffer_handle_t src, buffer_handle_t dest,
     IMG_gralloc_module_public_t* GrallocMod = (IMG_gralloc_module_public_t*)gModule;
 
 #ifdef MRFLD_GFX
+#ifdef LP_BLOBS
+    err = GrallocMod->Blit(GrallocMod, src, dest, w, h, 0, 0, 0, 0);
+#else
     {
         int fenceFd;
         err = GrallocMod->Blit(GrallocMod, src, dest, w, h, 0, 0, 0, -1, &fenceFd);
@@ -170,6 +173,7 @@ static int gfx_Blit(buffer_handle_t src, buffer_handle_t dest,
             close(fenceFd);
         }
     }
+#endif
 #else
     err = GrallocMod->Blit2(GrallocMod, src, dest, w, h, 0, 0);
 #endif
